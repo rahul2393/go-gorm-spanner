@@ -124,6 +124,20 @@ func (m spannerMigrator) CreateTable(values ...interface{}) error {
 	return nil
 }
 
+// DropTable drop table for values
+func (m spannerMigrator) DropTable(values ...interface{}) error {
+	values = m.ReorderModels(values, false)
+	for i := len(values) - 1; i >= 0; i-- {
+		tx := m.DB.Session(&gorm.Session{})
+		if err := m.RunWithValue(values[i], func(stmt *gorm.Statement) error {
+			return tx.Exec("DROP TABLE ?", m.CurrentTable(stmt)).Error
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func buildConstraint(constraint *schema.Constraint) (sql string, results []interface{}) {
 	sql = "CONSTRAINT ? FOREIGN KEY ? REFERENCES ??"
 	if constraint.OnDelete != "" {

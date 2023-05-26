@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +31,7 @@ import (
 	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	"cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
-	"github.com/google/uuid"
+	"github.com/googleapis/go-gorm/testutil"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
@@ -155,7 +157,7 @@ func createTestDB(ctx context.Context, statements ...string) (dsn string, cleanu
 	}
 	currentTime := time.Now().UnixNano()
 	databaseId := fmt.Sprintf("%s-%d", prefix, currentTime)
-	opDB, err := databaseAdminClient.CreateDatabase(ctx, &databasepb.CreateDatabaseRequest{
+	opdb, err := databaseAdminClient.CreateDatabase(ctx, &databasepb.CreateDatabaseRequest{
 		Parent:          fmt.Sprintf("projects/%s/instances/%s", projectId, instanceId),
 		CreateStatement: fmt.Sprintf("CREATE DATABASE `%s`", databaseId),
 		ExtraStatements: statements,
@@ -164,7 +166,7 @@ func createTestDB(ctx context.Context, statements ...string) (dsn string, cleanu
 		return "", nil, err
 	} else {
 		// Wait for the database creation to finish.
-		_, err := opDB.Wait(ctx)
+		_, err := opdb.Wait(ctx)
 		if err != nil {
 			return "", nil, fmt.Errorf("waiting for database creation to finish failed: %v", err)
 		}
@@ -232,32 +234,9 @@ func skipIfShort(t *testing.T) {
 	}
 }
 
-type Profile struct {
-	ID       string
-	Name     string
-	MemberID int
-}
-
-type Member struct {
-	ID      string
-	Refer   int `gorm:"uniqueIndex"`
-	Name    string
-	Profile Profile `gorm:"FOREIGNKEY:MemberID;References:Refer"`
-}
-
-func (profile *Profile) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	profile.ID = uuid.NewString()
-	return
-}
-
-func (memeber *Member) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	memeber.ID = uuid.NewString()
-	return
-}
-
 func TestForeignKeyConstraints(t *testing.T) {
+	skipIfShort(t)
+	t.Parallel()
 	dsn, cleanup, err := createTestDB(context.Background())
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
@@ -272,18 +251,269 @@ func TestForeignKeyConstraints(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.Migrator().DropTable(&Profile{}, &Member{})
-	if err := db.AutoMigrate(&Profile{}, &Member{}); err != nil {
+	db.Migrator().DropTable(&testutil.Profile{}, &testutil.Member{})
+	if err := db.AutoMigrate(&testutil.Profile{}, &testutil.Member{}); err != nil {
 		t.Fatalf("Failed to migrate, got error: %v", err)
 	}
-	member := Member{Refer: 1, Name: "foreign_key_constraints", Profile: Profile{Name: "my_profile"}}
+	member := testutil.Member{Refer: 1, Name: "foreign_key_constraints", Profile: testutil.Profile{Name: "my_profile"}}
 
 	db.Create(&member)
 
-	var profile Profile
+	var profile testutil.Profile
 	if err := db.First(&profile, "id = ?", member.Profile.ID).Error; err != nil {
 		t.Fatalf("failed to find profile, got error: %v", err)
 	} else if profile.MemberID != member.Refer {
 		t.Fatalf("member id is not equal: expects: %v, got: %v", member.ID, profile.MemberID)
+	}
+}
+
+func TestFind(t *testing.T) {
+	skipIfShort(t)
+	t.Parallel()
+	dsn, cleanup, err := createTestDB(context.Background())
+	if err != nil {
+		log.Fatalf("could not init integration tests while creating database: %v", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+	// Open db.
+	db, err := gorm.Open(New(Config{
+		DriverName: "spanner",
+		DSN:        dsn,
+	}), &gorm.Config{PrepareStmt: true})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := db.AutoMigrate(&testutil.User{}, &testutil.Account{}, &testutil.Pet{}, &testutil.Toy{}, &testutil.Company{}, &testutil.Language{}); err != nil {
+		t.Fatalf("Failed to migrate, got error: %v", err)
+	}
+
+	users := []testutil.User{
+		*testutil.GetUser("find", "1", testutil.Config{}),
+		*testutil.GetUser("find", "2", testutil.Config{}),
+		*testutil.GetUser("find", "3", testutil.Config{}),
+	}
+
+	if err := db.Create(&users).Error; err != nil {
+		t.Fatalf("errors happened when create users: %v", err)
+	}
+
+	t.Run("First", func(t *testing.T) {
+		var first testutil.User
+		if err := db.Where("name = ?", "find").First(&first).Error; err != nil {
+			t.Errorf("errors happened when query first: %v", err)
+		} else {
+			testutil.CheckUser(t, db, first, users[0])
+		}
+	})
+
+	t.Run("Last", func(t *testing.T) {
+		var last testutil.User
+		if err := db.Where("name = ?", "find").Last(&last).Error; err != nil {
+			t.Errorf("errors happened when query last: %v", err)
+		} else {
+			testutil.CheckUser(t, db, last, users[2])
+		}
+	})
+
+	var all []testutil.User
+	if err := db.Where("name = ?", "find").Find(&all).Error; err != nil || len(all) != 3 {
+		t.Errorf("errors happened when query find: %v, length: %v", err, len(all))
+	} else {
+		for idx, user := range users {
+			t.Run("FindAll#"+strconv.Itoa(idx+1), func(t *testing.T) {
+				testutil.CheckUser(t, db, all[idx], user)
+			})
+		}
+	}
+
+	t.Run("FirstMap", func(t *testing.T) {
+		first := map[string]interface{}{}
+		if err := db.Model(&testutil.User{}).Where("name = ?", "find").First(first).Error; err != nil {
+			t.Errorf("errors happened when query first: %v", err)
+		} else {
+			for _, name := range []string{"Name", "Age", "Birthday"} {
+				t.Run(name, func(t *testing.T) {
+					dbName := db.NamingStrategy.ColumnName("", name)
+
+					switch name {
+					case "Name":
+						if _, ok := first[dbName].(string); !ok {
+							t.Errorf("invalid data type for %v, got %#v", dbName, first[dbName])
+						}
+					case "Age":
+						if _, ok := first[dbName].(int64); !ok {
+							t.Errorf("invalid data type for %v, got %#v", dbName, first[dbName])
+						}
+					case "Birthday":
+						if _, ok := first[dbName].(time.Time); !ok {
+							t.Errorf("invalid data type for %v, got %#v", dbName, first[dbName])
+						}
+					}
+
+					reflectValue := reflect.Indirect(reflect.ValueOf(users[0]))
+					testutil.AssertEqual(t, first[dbName], reflectValue.FieldByName(name).Interface())
+				})
+			}
+		}
+	})
+
+	t.Run("FirstMapWithTable", func(t *testing.T) {
+		first := map[string]interface{}{}
+		if err := db.Table("users").Where("name = ?", "find").Find(first).Error; err != nil {
+			t.Errorf("errors happened when query first: %v", err)
+		} else {
+			for _, name := range []string{"Name", "Age", "Birthday"} {
+				t.Run(name, func(t *testing.T) {
+					dbName := db.NamingStrategy.ColumnName("", name)
+					resultType := reflect.ValueOf(first[dbName]).Type().Name()
+
+					switch name {
+					case "Name":
+						if !strings.Contains(resultType, "string") {
+							t.Errorf("invalid data type for %v, got %v %#v", dbName, resultType, first[dbName])
+						}
+					case "Age":
+						if !strings.Contains(resultType, "int") {
+							t.Errorf("invalid data type for %v, got %v %#v", dbName, resultType, first[dbName])
+						}
+					case "Birthday":
+						if !strings.Contains(resultType, "Time") {
+							t.Errorf("invalid data type for %v, got %v %#v", dbName, resultType, first[dbName])
+						}
+					}
+
+					reflectValue := reflect.Indirect(reflect.ValueOf(users[0]))
+					testutil.AssertEqual(t, first[dbName], reflectValue.FieldByName(name).Interface())
+				})
+			}
+		}
+	})
+
+	t.Run("FirstPtrMap", func(t *testing.T) {
+		first := map[string]interface{}{}
+		if err := db.Model(&testutil.User{}).Where("name = ?", "find").First(&first).Error; err != nil {
+			t.Errorf("errors happened when query first: %v", err)
+		} else {
+			for _, name := range []string{"Name", "Age", "Birthday"} {
+				t.Run(name, func(t *testing.T) {
+					dbName := db.NamingStrategy.ColumnName("", name)
+					reflectValue := reflect.Indirect(reflect.ValueOf(users[0]))
+					testutil.AssertEqual(t, first[dbName], reflectValue.FieldByName(name).Interface())
+				})
+			}
+		}
+	})
+
+	t.Run("FirstSliceOfMap", func(t *testing.T) {
+		allMap := []map[string]interface{}{}
+		if err := db.Model(&testutil.User{}).Where("name = ?", "find").Find(&allMap).Error; err != nil {
+			t.Errorf("errors happened when query find: %v", err)
+		} else {
+			for idx, user := range users {
+				t.Run("FindAllMap#"+strconv.Itoa(idx+1), func(t *testing.T) {
+					for _, name := range []string{"Name", "Age", "Birthday"} {
+						t.Run(name, func(t *testing.T) {
+							dbName := db.NamingStrategy.ColumnName("", name)
+
+							switch name {
+							case "Name":
+								if _, ok := allMap[idx][dbName].(string); !ok {
+									t.Errorf("invalid data type for %v, got %#v", dbName, allMap[idx][dbName])
+								}
+							case "Age":
+								if _, ok := allMap[idx][dbName].(int64); !ok {
+									t.Errorf("invalid data type for %v, got %#v", dbName, allMap[idx][dbName])
+								}
+							case "Birthday":
+								if _, ok := allMap[idx][dbName].(time.Time); !ok {
+									t.Errorf("invalid data type for %v, got %#v", dbName, allMap[idx][dbName])
+								}
+							}
+
+							reflectValue := reflect.Indirect(reflect.ValueOf(user))
+							testutil.AssertEqual(t, allMap[idx][dbName], reflectValue.FieldByName(name).Interface())
+						})
+					}
+				})
+			}
+		}
+	})
+
+	t.Run("FindSliceOfMapWithTable", func(t *testing.T) {
+		allMap := []map[string]interface{}{}
+		if err := db.Table("users").Where("name = ?", "find").Find(&allMap).Error; err != nil {
+			t.Errorf("errors happened when query find: %v", err)
+		} else {
+			for idx, user := range users {
+				t.Run("FindAllMap#"+strconv.Itoa(idx+1), func(t *testing.T) {
+					for _, name := range []string{"Name", "Age", "Birthday"} {
+						t.Run(name, func(t *testing.T) {
+							dbName := db.NamingStrategy.ColumnName("", name)
+							resultType := reflect.ValueOf(allMap[idx][dbName]).Type().Name()
+
+							switch name {
+							case "Name":
+								if !strings.Contains(resultType, "string") {
+									t.Errorf("invalid data type for %v, got %v %#v", dbName, resultType, allMap[idx][dbName])
+								}
+							case "Age":
+								if !strings.Contains(resultType, "int") {
+									t.Errorf("invalid data type for %v, got %v %#v", dbName, resultType, allMap[idx][dbName])
+								}
+							case "Birthday":
+								if !strings.Contains(resultType, "Time") {
+									t.Errorf("invalid data type for %v, got %v %#v", dbName, resultType, allMap[idx][dbName])
+								}
+							}
+
+							reflectValue := reflect.Indirect(reflect.ValueOf(user))
+							testutil.AssertEqual(t, allMap[idx][dbName], reflectValue.FieldByName(name).Interface())
+						})
+					}
+				})
+			}
+		}
+	})
+
+	var models []testutil.User
+	if err := db.Where("name in (?)", []string{"find"}).Find(&models).Error; err != nil || len(models) != 3 {
+		t.Errorf("errors happened when query find with in clause: %v, length: %v", err, len(models))
+	} else {
+		for idx, user := range users {
+			t.Run("FindWithInClause#"+strconv.Itoa(idx+1), func(t *testing.T) {
+				testutil.CheckUser(t, db, models[idx], user)
+			})
+		}
+	}
+
+	// test array
+	var models2 [3]testutil.User
+	if err := db.Where("name in (?)", []string{"find"}).Find(&models2).Error; err != nil || len(models2) != 3 {
+		t.Errorf("errors happened when query find with in clause: %v, length: %v", err, len(models2))
+	} else {
+		for idx, user := range users {
+			t.Run("FindWithInClause#"+strconv.Itoa(idx+1), func(t *testing.T) {
+				testutil.CheckUser(t, db, models2[idx], user)
+			})
+		}
+	}
+
+	// test smaller array
+	var models3 [2]testutil.User
+	if err := db.Where("name in (?)", []string{"find"}).Find(&models3).Error; err != nil || len(models3) != 2 {
+		t.Errorf("errors happened when query find with in clause: %v, length: %v", err, len(models3))
+	} else {
+		for idx, user := range users[:2] {
+			t.Run("FindWithInClause#"+strconv.Itoa(idx+1), func(t *testing.T) {
+				testutil.CheckUser(t, db, models3[idx], user)
+			})
+		}
+	}
+
+	var none []testutil.User
+	if err := db.Where("name in (?)", []string{}).Find(&none).Error; err != nil || len(none) != 0 {
+		t.Errorf("errors happened when query find with in clause and zero length parameter: %v, length: %v", err, len(none))
 	}
 }

@@ -18,11 +18,10 @@ import (
 	"errors"
 	"fmt"
 
-	"gorm.io/gorm"
-
 	spannergorm "github.com/googleapis/go-gorm"
 	"github.com/googleapis/go-gorm/samples"
 	_ "github.com/googleapis/go-sql-spanner"
+	"gorm.io/gorm"
 )
 
 // Simple sample application that shows how to use GORM with Cloud Spanner.

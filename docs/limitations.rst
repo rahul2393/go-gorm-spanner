@@ -19,8 +19,8 @@ Partition Reads can be done by unwrapping the Spanner-specific `SpannerConn` int
 
 PostgreSQL
 ~~~~~~~
-Spanner databases that use the PostgreSQL dialect are not yet supported. Check `Integrate Spanner PostgreSQL-dialect with GORM<https://cloud.google.com/spanner/docs/use-gorm#install>` to use GORM with PG Spanner.
+Spanner databases that use the PostgreSQL dialect are not yet supported. Check `Integrate Spanner PostgreSQL-dialect with GORM <https://cloud.google.com/spanner/docs/use-gorm#install>`_ to use GORM with PG Spanner.
 
 Backups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Backups are not supported by this driver. Use the `Cloud Spanner Go client library<https://github.com/googleapis/google-cloud-go/tree/main/spanner>` to manage backups programmatically.
+Backups are not supported by this driver. Use the `Cloud Spanner Go client library <https://github.com/googleapis/google-cloud-go/tree/main/spanner>`_ to manage backups programmatically.

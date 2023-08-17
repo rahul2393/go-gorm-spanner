@@ -137,9 +137,6 @@ func GetUser(name, id string, config Config) *User {
 	var (
 		birthday = time.Now().Round(time.Second)
 		user     = User{
-			BaseModel: BaseModel{
-				ID: id,
-			},
 			Name: name,
 			Age:  18,
 			Birthday: spanner.NullTime{
@@ -191,7 +188,7 @@ func GetUser(name, id string, config Config) *User {
 }
 
 func CheckPet(t *testing.T, db *gorm.DB, pet Pet, expect Pet) {
-	if pet.ID != "" {
+	if pet.ID != 0 {
 		var newPet Pet
 		if err := db.Where("id = ?", pet.ID).First(&newPet).Error; err != nil {
 			t.Fatalf("errors happened when query: %v", err)
@@ -211,7 +208,7 @@ func CheckPet(t *testing.T, db *gorm.DB, pet Pet, expect Pet) {
 }
 
 func CheckUser(t *testing.T, db *gorm.DB, user User, expect User) {
-	if user.ID != "" {
+	if user.ID != 0 {
 		var newUser User
 		if err := db.Where("id = ?", user.ID).First(&newUser).Error; err != nil {
 			t.Fatalf("errors happened when query: %v", err)

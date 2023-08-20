@@ -10,7 +10,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/googleapis/go-gorm v0.0.0-00010101000000-000000000000
 	github.com/googleapis/go-sql-spanner v1.0.1
-	gorm.io/gorm v1.25.0
+	gorm.io/gorm v1.25.4
 )
 
 require (

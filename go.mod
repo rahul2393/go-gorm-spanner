@@ -8,7 +8,7 @@ require (
 	github.com/googleapis/go-sql-spanner v1.0.1
 	google.golang.org/api v0.111.0
 	google.golang.org/grpc v1.53.0
-	gorm.io/gorm v1.25.0
+	gorm.io/gorm v1.25.4
 )
 
 require (

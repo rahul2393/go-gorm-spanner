@@ -19,13 +19,16 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/googleapis/go-sql-spanner"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/migrator"
 	"gorm.io/gorm/schema"
+
+	_ "github.com/googleapis/go-sql-spanner"
+
+	spannerclause "github.com/googleapis/go-gorm/clause"
 )
 
 type Config struct {
@@ -65,6 +68,14 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		return err
 	}
 
+	createCallback := db.Callback().Create()
+	if err := createCallback.
+		After("gorm:before_create").
+		Before("gorm:create").
+		Register("gorm:spanner:returning", Returning); err != nil {
+		return err
+	}
+
 	if dialector.Conn != nil {
 		db.ConnPool = dialector.Conn
 	} else {
@@ -78,6 +89,14 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	db.ClauseBuilders[clause.OnConflict{}.Name()] = func(c clause.Clause, builder clause.Builder) {}
 
 	return
+}
+
+func Returning(db *gorm.DB) {
+	fromColumns := make([]clause.Column, 0, len(db.Statement.Schema.FieldsWithDefaultDBValue))
+	for _, field := range db.Statement.Schema.FieldsWithDefaultDBValue {
+		fromColumns = append(fromColumns, clause.Column{Name: field.DBName})
+	}
+	db.Statement.AddClause(spannerclause.Returning{Columns: fromColumns})
 }
 
 func BeforeUpdate(db *gorm.DB) {

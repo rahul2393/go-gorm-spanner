@@ -58,10 +58,6 @@ func (m spannerMigrator) FullDataTypeOf(field *schema.Field) (expr clause.Expr) 
 		expr.SQL += " NOT NULL"
 	}
 
-	if field.Unique {
-		expr.SQL += " UNIQUE"
-	}
-
 	if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
 		if field.DefaultValueInterface != nil {
 			defaultStmt := &gorm.Statement{Vars: []interface{}{field.DefaultValueInterface}}
@@ -161,6 +157,16 @@ func (m spannerMigrator) DropTable(values ...interface{}) error {
 		}
 	}
 	return nil
+}
+
+func (m spannerMigrator) DropIndex(value interface{}, name string) error {
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if idx := stmt.Schema.LookIndex(name); idx != nil {
+			name = idx.Name
+		}
+
+		return m.DB.Exec("DROP INDEX ?", clause.Column{Name: name}).Error
+	})
 }
 
 // ColumnTypes column types return columnTypes,error

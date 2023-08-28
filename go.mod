@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	cloud.google.com/go/spanner v1.44.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/googleapis/go-sql-spanner v1.0.1
 	google.golang.org/api v0.111.0
 	google.golang.org/grpc v1.53.0

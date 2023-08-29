@@ -153,7 +153,7 @@ func createTestDB(ctx context.Context, statements ...string) (dsn string, cleanu
 	defer databaseAdminClient.Close()
 	prefix, ok := os.LookupEnv("SPANNER_TEST_DBID")
 	if !ok {
-		prefix = "gotest"
+		prefix = "gormtest"
 	}
 	currentTime := time.Now().UnixNano()
 	databaseId := fmt.Sprintf("%s-%d", prefix, currentTime)
@@ -234,18 +234,8 @@ func skipIfShort(t *testing.T) {
 	}
 }
 
-func isEmulatorEnvSet() bool {
-	return os.Getenv("SPANNER_EMULATOR_HOST") != ""
-}
-
-func skipEmulatorTest(t *testing.T) {
-	if isEmulatorEnvSet() {
-		t.Skip("Skipping testing against the emulator.")
-	}
-}
 func TestDefaultValue(t *testing.T) {
 	skipIfShort(t)
-	skipEmulatorTest(t)
 	t.Parallel()
 	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
 	if err != nil {
@@ -298,7 +288,7 @@ func TestDefaultValue(t *testing.T) {
 func TestForeignKeyConstraints(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()
-	dsn, cleanup, err := createTestDB(context.Background())
+	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
 		os.Exit(1)
@@ -331,7 +321,7 @@ func TestForeignKeyConstraints(t *testing.T) {
 func TestFind(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()
-	dsn, cleanup, err := createTestDB(context.Background())
+	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
 		os.Exit(1)

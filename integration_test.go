@@ -234,8 +234,18 @@ func skipIfShort(t *testing.T) {
 	}
 }
 
+func isEmulatorEnvSet() bool {
+	return os.Getenv("SPANNER_EMULATOR_HOST") != ""
+}
+
+func skipEmulatorTest(t *testing.T) {
+	if isEmulatorEnvSet() {
+		t.Skip("Skipping testing against the emulator.")
+	}
+}
 func TestDefaultValue(t *testing.T) {
 	skipIfShort(t)
+	skipEmulatorTest(t)
 	t.Parallel()
 	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
 	if err != nil {

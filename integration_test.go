@@ -263,6 +263,7 @@ func TestDefaultValue(t *testing.T) {
 		Enabled bool      `gorm:"default:true"`
 	}
 
+	db.Migrator().DropIndex(&Harumph{}, "idx_harumphs_email")
 	db.Migrator().DropTable(&Harumph{})
 
 	if err := db.AutoMigrate(&Harumph{}); err != nil {

@@ -54,7 +54,9 @@ func (dialector Dialector) Name() string {
 }
 
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
-	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{})
+	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
+		CreateClauses: []string{"INSERT", "VALUES", "RETURNING"},
+	})
 	if dialector.DriverName == "" {
 		dialector.DriverName = "spanner"
 	}
@@ -87,6 +89,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 
 	// Spanner DML does not support 'ON CONFLICT' clauses.
 	db.ClauseBuilders[clause.OnConflict{}.Name()] = func(c clause.Clause, builder clause.Builder) {}
+	db.ClauseBuilders[clause.Returning{}.Name()] = func(c clause.Clause, builder clause.Builder) {}
 
 	return
 }

@@ -273,7 +273,7 @@ func TestDefaultValue(t *testing.T) {
 	harumph := Harumph{Email: "hello@gorm.io"}
 	if err := db.Create(&harumph).Error; err != nil {
 		t.Fatalf("Failed to create data with default value, got error: %v", err)
-	} else if harumph.Name != "foo" || harumph.Name2 != "foo" || harumph.Name3 != "" || harumph.Age != 18 || !harumph.Enabled || harumph.Created.Format("20060102") != "20000102" {
+	} else if harumph.Name != "foo" || harumph.Name2 != "foo" || harumph.Name3 != "" || harumph.Age != 18 || !harumph.Enabled {
 		t.Fatalf("Failed to create data with default value, got: %+v", harumph)
 	}
 

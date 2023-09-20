@@ -19,13 +19,14 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/googleapis/go-sql-spanner"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/migrator"
 	"gorm.io/gorm/schema"
+
+	_ "github.com/googleapis/go-sql-spanner"
 )
 
 type Config struct {
@@ -51,7 +52,9 @@ func (dialector Dialector) Name() string {
 }
 
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
-	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{})
+	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
+		CreateClauses: []string{"INSERT", "VALUES", "RETURNING"},
+	})
 	if dialector.DriverName == "" {
 		dialector.DriverName = "spanner"
 	}
@@ -76,6 +79,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 
 	// Spanner DML does not support 'ON CONFLICT' clauses.
 	db.ClauseBuilders[clause.OnConflict{}.Name()] = func(c clause.Clause, builder clause.Builder) {}
+	db.ClauseBuilders[clause.Returning{}.Name()] = func(c clause.Clause, builder clause.Builder) {}
 
 	return
 }
@@ -112,7 +116,7 @@ func (dialector Dialector) Migrator(db *gorm.DB) gorm.Migrator {
 }
 
 func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v interface{}) {
-	_, _ = writer.WriteString(fmt.Sprintf("@p%d", len(stmt.Vars)))
+	writer.WriteByte('?')
 }
 
 func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {

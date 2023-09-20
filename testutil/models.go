@@ -10,12 +10,12 @@ import (
 
 // BaseModel is embedded in all other models to add common database fields.
 type BaseModel struct {
-	// ID is the primary key of each model. The ID is generated client side as a UUID.
+	// ID is the primary key of each model.
 	// Adding the `primaryKey` annotation is redundant for most models, as gorm will assume that the column with name ID
 	// is the primary key. This is however not redundant for models that add additional primary key columns, such as
 	// child tables in interleaved table hierarchies, as a missing primary key annotation here would then cause the
 	// primary key column defined on the child table to be the only primary key column.
-	ID string `gorm:"primaryKey;autoIncrement:false"`
+	ID uint `gorm:"primarykey;default:GET_NEXT_SEQUENCE_VALUE(Sequence seqT)"`
 	// CreatedAt and UpdatedAt are managed automatically by gorm.
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -45,24 +45,10 @@ type User struct {
 	Active    bool
 }
 
-func (user *User) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version
-	if user.ID == "" {
-		user.ID = uuid.NewString()
-	}
-	return
-}
-
 type Account struct {
 	BaseModel
 	UserID spanner.NullString
 	Number string
-}
-
-func (account *Account) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	account.ID = uuid.NewString()
-	return
 }
 
 type Pet struct {
@@ -72,23 +58,11 @@ type Pet struct {
 	Toy    Toy `gorm:"polymorphic:Owner;"`
 }
 
-func (pet *Pet) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	pet.ID = uuid.NewString()
-	return
-}
-
 type Toy struct {
 	BaseModel
 	Name      string
 	OwnerID   string
 	OwnerType string
-}
-
-func (toy *Toy) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	toy.ID = uuid.NewString()
-	return
 }
 
 type Company struct {
@@ -117,7 +91,7 @@ type Member struct {
 	ID      string
 	Refer   int `gorm:"uniqueIndex"`
 	Name    string
-	Profile Profile `gorm:"FOREIGNKEY:MemberID;References:Refer"`
+	Profile Profile `gorm:"Constraint:OnDelete:CASCADE;FOREIGNKEY:MemberID;References:Refer"`
 }
 
 func (memeber *Member) BeforeCreate(tx *gorm.DB) (err error) {

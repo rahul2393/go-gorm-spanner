@@ -50,6 +50,27 @@ func (m spannerMigrator) AbortBatch() error {
 	return m.DB.Exec("ABORT BATCH").Error
 }
 
+// FullDataTypeOf returns field's db full data type
+func (m spannerMigrator) FullDataTypeOf(field *schema.Field) (expr clause.Expr) {
+	expr.SQL = m.Migrator.DataTypeOf(field)
+
+	if field.NotNull {
+		expr.SQL += " NOT NULL"
+	}
+
+	if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
+		if field.DefaultValueInterface != nil {
+			defaultStmt := &gorm.Statement{Vars: []interface{}{field.DefaultValueInterface}}
+			m.Dialector.BindVarTo(defaultStmt, defaultStmt, field.DefaultValueInterface)
+			expr.SQL += " DEFAULT (" + m.Dialector.Explain(defaultStmt.SQL.String(), field.DefaultValueInterface) + ")"
+		} else if field.DefaultValue != "(-)" {
+			expr.SQL += " DEFAULT (" + field.DefaultValue + ")"
+		}
+	}
+
+	return
+}
+
 func (m spannerMigrator) CreateTable(values ...interface{}) error {
 	for _, value := range m.ReorderModels(values, false) {
 		tx := m.DB.Session(&gorm.Session{})
@@ -136,6 +157,94 @@ func (m spannerMigrator) DropTable(values ...interface{}) error {
 		}
 	}
 	return nil
+}
+
+func (m spannerMigrator) DropIndex(value interface{}, name string) error {
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if idx := stmt.Schema.LookIndex(name); idx != nil {
+			name = idx.Name
+		}
+
+		return m.DB.Exec("DROP INDEX ?", clause.Column{Name: name}).Error
+	})
+}
+
+// ColumnTypes column types return columnTypes,error
+func (m spannerMigrator) ColumnTypes(value interface{}) ([]gorm.ColumnType, error) {
+	columnTypes := make([]gorm.ColumnType, 0)
+	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		var (
+			table         = stmt.Table
+			columnTypeSQL = "SELECT column_name, column_default, is_nullable = 'YES', data_type, character_maximum_length, column_type, column_key, extra, column_comment, numeric_precision, numeric_scale "
+			rows, err     = m.DB.Session(&gorm.Session{}).Table(table).Limit(1).Rows()
+		)
+
+		if err != nil {
+			return err
+		}
+
+		rawColumnTypes, err := rows.ColumnTypes()
+
+		if err != nil {
+			return err
+		}
+
+		if err := rows.Close(); err != nil {
+			return err
+		}
+
+		columnTypeSQL += "FROM information_schema.columns WHERE table_name = ? ORDER BY ORDINAL_POSITION"
+
+		columns, rowErr := m.DB.Table(table).Raw(columnTypeSQL, table).Rows()
+		if rowErr != nil {
+			return rowErr
+		}
+
+		defer columns.Close()
+
+		for columns.Next() {
+			var (
+				column     migrator.ColumnType
+				extraValue sql.NullString
+				columnKey  sql.NullString
+				values     = []interface{}{
+					&column.NameValue, &column.DefaultValueValue, &column.NullableValue, &column.DataTypeValue, &column.LengthValue, &column.ColumnTypeValue, &columnKey, &extraValue, &column.CommentValue, &column.DecimalSizeValue, &column.ScaleValue,
+				}
+			)
+
+			if scanErr := columns.Scan(values...); scanErr != nil {
+				return scanErr
+			}
+
+			column.PrimaryKeyValue = sql.NullBool{Bool: false, Valid: true}
+			column.UniqueValue = sql.NullBool{Bool: false, Valid: true}
+			switch columnKey.String {
+			case "PRI":
+				column.PrimaryKeyValue = sql.NullBool{Bool: true, Valid: true}
+			case "UNI":
+				column.UniqueValue = sql.NullBool{Bool: true, Valid: true}
+			}
+
+			if strings.Contains(extraValue.String, "auto_increment") {
+				column.AutoIncrementValue = sql.NullBool{Bool: true, Valid: true}
+			}
+
+			column.DefaultValueValue.String = strings.Trim(column.DefaultValueValue.String, "'")
+
+			for _, c := range rawColumnTypes {
+				if c.Name() == column.NameValue.String {
+					column.SQLColumnType = c
+					break
+				}
+			}
+
+			columnTypes = append(columnTypes, column)
+		}
+
+		return nil
+	})
+
+	return columnTypes, err
 }
 
 func buildConstraint(constraint *schema.Constraint) (sql string, results []interface{}) {

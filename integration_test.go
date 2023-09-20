@@ -153,7 +153,7 @@ func createTestDB(ctx context.Context, statements ...string) (dsn string, cleanu
 	defer databaseAdminClient.Close()
 	prefix, ok := os.LookupEnv("SPANNER_TEST_DBID")
 	if !ok {
-		prefix = "gotest"
+		prefix = "gormtest"
 	}
 	currentTime := time.Now().UnixNano()
 	databaseId := fmt.Sprintf("%s-%d", prefix, currentTime)
@@ -234,10 +234,61 @@ func skipIfShort(t *testing.T) {
 	}
 }
 
+func TestDefaultValue(t *testing.T) {
+	skipIfShort(t)
+	t.Parallel()
+	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
+	if err != nil {
+		log.Fatalf("could not init integration tests while creating database: %v", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+	// Open db.
+	db, err := gorm.Open(New(Config{
+		DriverName: "spanner",
+		DSN:        dsn,
+	}), &gorm.Config{PrepareStmt: true})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	type Harumph struct {
+		testutil.BaseModel
+		Email   string    `gorm:"not null;index:,unique"`
+		Name    string    `gorm:"notNull;default:foo"`
+		Name2   string    `gorm:"size:233;not null;default:'foo'"`
+		Name3   string    `gorm:"size:233;notNull;default:''"`
+		Age     int       `gorm:"default:18"`
+		Created time.Time `gorm:"default:2000-01-02"`
+		Enabled bool      `gorm:"default:true"`
+	}
+
+	db.Migrator().DropIndex(&Harumph{}, "idx_harumphs_email")
+	db.Migrator().DropTable(&Harumph{})
+
+	if err := db.AutoMigrate(&Harumph{}); err != nil {
+		t.Fatalf("Failed to migrate with default value, got error: %v", err)
+	}
+
+	harumph := Harumph{Email: "hello@gorm.io"}
+	if err := db.Create(&harumph).Error; err != nil {
+		t.Fatalf("Failed to create data with default value, got error: %v", err)
+	} else if harumph.Name != "foo" || harumph.Name2 != "foo" || harumph.Name3 != "" || harumph.Age != 18 || !harumph.Enabled {
+		t.Fatalf("Failed to create data with default value, got: %+v", harumph)
+	}
+
+	var result Harumph
+	if err := db.First(&result, "email = ?", "hello@gorm.io").Error; err != nil {
+		t.Fatalf("Failed to find created data, got error: %v", err)
+	} else if result.Name != "foo" || result.Name2 != "foo" || result.Name3 != "" || result.Age != 18 || !result.Enabled || result.Created.Format("20060102") != "20000102" {
+		t.Fatalf("Failed to find created data with default data, got %+v", result)
+	}
+}
+
 func TestForeignKeyConstraints(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()
-	dsn, cleanup, err := createTestDB(context.Background())
+	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
 		os.Exit(1)
@@ -270,7 +321,7 @@ func TestForeignKeyConstraints(t *testing.T) {
 func TestFind(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()
-	dsn, cleanup, err := createTestDB(context.Background())
+	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
 		os.Exit(1)

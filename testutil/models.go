@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // BaseModel is embedded in all other models to add common database fields.
@@ -73,29 +71,4 @@ type Company struct {
 type Language struct {
 	Code string `gorm:"primarykey"`
 	Name string
-}
-
-type Profile struct {
-	ID       string
-	Name     string
-	MemberID int
-}
-
-func (profile *Profile) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	profile.ID = uuid.NewString()
-	return
-}
-
-type Member struct {
-	ID      string
-	Refer   int `gorm:"uniqueIndex"`
-	Name    string
-	Profile Profile `gorm:"Constraint:OnDelete:CASCADE;FOREIGNKEY:MemberID;References:Refer"`
-}
-
-func (memeber *Member) BeforeCreate(tx *gorm.DB) (err error) {
-	// UUID version 4
-	memeber.ID = uuid.NewString()
-	return
 }

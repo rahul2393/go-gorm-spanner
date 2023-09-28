@@ -285,39 +285,6 @@ func TestDefaultValue(t *testing.T) {
 	}
 }
 
-func TestForeignKeyConstraints(t *testing.T) {
-	skipIfShort(t)
-	t.Parallel()
-	dsn, cleanup, err := createTestDB(context.Background(), []string{`CREATE SEQUENCE seqT OPTIONS (sequence_kind = "bit_reversed_positive")`}...)
-	if err != nil {
-		log.Fatalf("could not init integration tests while creating database: %v", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-	// Open db.
-	db, err := gorm.Open(New(Config{
-		DriverName: "spanner",
-		DSN:        dsn,
-	}), &gorm.Config{PrepareStmt: true})
-	if err != nil {
-		log.Fatal(err)
-	}
-	db.Migrator().DropTable(&testutil.Profile{}, &testutil.Member{})
-	if err := db.AutoMigrate(&testutil.Profile{}, &testutil.Member{}); err != nil {
-		t.Fatalf("Failed to migrate, got error: %v", err)
-	}
-	member := testutil.Member{Refer: 1, Name: "foreign_key_constraints", Profile: testutil.Profile{Name: "my_profile"}}
-
-	db.Create(&member)
-
-	var profile testutil.Profile
-	if err := db.First(&profile, "id = ?", member.Profile.ID).Error; err != nil {
-		t.Fatalf("failed to find profile, got error: %v", err)
-	} else if profile.MemberID != member.Refer {
-		t.Fatalf("member id is not equal: expects: %v, got: %v", member.ID, profile.MemberID)
-	}
-}
-
 func TestFind(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()

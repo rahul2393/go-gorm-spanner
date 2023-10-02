@@ -6,7 +6,7 @@ replace github.com/googleapis/go-gorm => ../
 
 require (
 	cloud.google.com/go/spanner v1.45.1
-	github.com/docker/docker v23.0.6+incompatible
+	github.com/docker/docker v23.0.7+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/googleapis/go-gorm v0.0.0-00010101000000-000000000000
 	github.com/googleapis/go-sql-spanner v1.0.1

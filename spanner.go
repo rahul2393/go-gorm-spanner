@@ -33,6 +33,14 @@ type Config struct {
 	DriverName string
 	DSN        string
 	Conn       gorm.ConnPool
+
+	// DisableAutoMigrateBatching turns off DDL batching for AutoMigrate calls.
+	// Cloud Spanner by default uses DDL batching when AutoMigrate is called, as
+	// executing multiple DDL statements in a single batch is a lot more efficient
+	// than executing each statement separately. You should only use this option
+	// if you are experiencing problems with the automatic batching of DDL
+	// statements when calling AutoMigrate.
+	DisableAutoMigrateBatching bool
 }
 
 type Dialector struct {

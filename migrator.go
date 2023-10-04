@@ -17,6 +17,7 @@ package gorm
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"gorm.io/gorm"
@@ -36,6 +37,33 @@ type SpannerMigrator interface {
 type spannerMigrator struct {
 	migrator.Migrator
 	Dialector
+}
+
+func (m spannerMigrator) AutoMigrate(values ...interface{}) error {
+	if !m.Dialector.Config.DisableAutoMigrateBatching {
+		if err := m.StartBatchDDL(); err != nil {
+			return err
+		}
+	}
+	inputs := make([]reflect.Value, len(values))
+	for i, _ := range values {
+		inputs[i] = reflect.ValueOf(values[i])
+	}
+	result := reflect.ValueOf(&m.Migrator).MethodByName("AutoMigrate").Call(inputs)
+	if len(result) != 1 {
+		return fmt.Errorf("unexpected return value length: %d", len(result))
+	}
+	if err, ok := result[0].Interface().(error); ok {
+		return err
+	}
+	if result[0].IsNil() {
+		if m.Dialector.Config.DisableAutoMigrateBatching {
+			return nil
+		} else {
+			return m.RunBatch()
+		}
+	}
+	return fmt.Errorf("unexpected return value type: %v", result[0])
 }
 
 func (m spannerMigrator) StartBatchDDL() error {

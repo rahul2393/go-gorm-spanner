@@ -17,19 +17,18 @@ package gorm
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/longrunning/autogen/longrunningpb"
 	"cloud.google.com/go/spanner"
 	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	"github.com/golang/protobuf/proto"
 	emptypb "github.com/golang/protobuf/ptypes/empty"
-	"github.com/googleapis/go-sql-spanner/testutil"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/types/known/anypb"
 	"gorm.io/gorm"
+
+	"github.com/googleapis/go-sql-spanner/testutil"
 )
 
 type singer struct {
@@ -73,28 +72,36 @@ func TestMigrate(t *testing.T) {
 		t.Fatalf("request count mismatch\n Got: %v\nWant: %v", g, w)
 	}
 	request := requests[0].(*databasepb.UpdateDatabaseDdlRequest)
-	if g, w := len(request.GetStatements()), 4; g != w {
+	if g, w := len(request.GetStatements()), 6; g != w {
 		t.Fatalf("statement count mismatch\n Got: %v\nWant: %v", g, w)
 	}
 	if g, w := request.GetStatements()[0],
+		`CREATE SEQUENCE IF NOT EXISTS singers_GORM_SEQUENCE OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
+		t.Fatalf("create singers sequence statement text mismatch\n Got: %s\nWant: %s", g, w)
+	}
+	if g, w := request.GetStatements()[1],
 		"CREATE TABLE `singers` ("+
-			"`id` INT64,`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
+			"`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence singers_GORM_SEQUENCE)),`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
 			"`first_name` STRING(MAX),`last_name` STRING(MAX),`full_name` STRING(MAX),`active` BOOL) "+
 			"PRIMARY KEY (`id`)"; g != w {
 		t.Fatalf("create singers statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
-	if g, w := request.GetStatements()[1],
+	if g, w := request.GetStatements()[2],
 		"CREATE INDEX `idx_singers_deleted_at` ON `singers`(`deleted_at`)"; g != w {
 		t.Fatalf("create idx_singers_deleted_at statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
-	if g, w := request.GetStatements()[2],
-		"CREATE TABLE `albums` (`id` INT64,`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
+	if g, w := request.GetStatements()[3],
+		`CREATE SEQUENCE IF NOT EXISTS albums_GORM_SEQUENCE OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
+		t.Fatalf("create albums sequence statement text mismatch\n Got: %s\nWant: %s", g, w)
+	}
+	if g, w := request.GetStatements()[4],
+		"CREATE TABLE `albums` (`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence albums_GORM_SEQUENCE)),`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
 			"`title` STRING(MAX),`singer_id` INT64,"+
 			"CONSTRAINT `fk_albums_singer` FOREIGN KEY (`singer_id`) REFERENCES `singers`(`id`)) "+
 			"PRIMARY KEY (`id`)"; g != w {
 		t.Fatalf("create albums statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
-	if g, w := request.GetStatements()[3],
+	if g, w := request.GetStatements()[5],
 		"CREATE INDEX `idx_albums_deleted_at` ON `albums`(`deleted_at`)"; g != w {
 		t.Fatalf("create idx_albums_deleted_at statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
@@ -142,54 +149,5 @@ func setupMockedTestServerWithConfigAndClientOptions(t *testing.T, config spanne
 	return server, client, func() {
 		client.Close()
 		serverTeardown()
-	}
-}
-
-func requestsOfType(requests []interface{}, t reflect.Type) []interface{} {
-	res := make([]interface{}, 0)
-	for _, req := range requests {
-		if reflect.TypeOf(req) == t {
-			res = append(res, req)
-		}
-	}
-	return res
-}
-
-func drainRequestsFromServer(server testutil.InMemSpannerServer) []interface{} {
-	var reqs []interface{}
-loop:
-	for {
-		select {
-		case req := <-server.ReceivedRequests():
-			reqs = append(reqs, req)
-		default:
-			break loop
-		}
-	}
-	return reqs
-}
-
-func waitFor(t *testing.T, assert func() error) {
-	t.Helper()
-	timeout := 5 * time.Second
-	ta := time.After(timeout)
-
-	for {
-		select {
-		case <-ta:
-			if err := assert(); err != nil {
-				t.Fatalf("after %v waiting, got %v", timeout, err)
-			}
-			return
-		default:
-		}
-
-		if err := assert(); err != nil {
-			// Fail. Let's pause and retry.
-			time.Sleep(time.Millisecond)
-			continue
-		}
-
-		return
 	}
 }

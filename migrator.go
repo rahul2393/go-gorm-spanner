@@ -17,13 +17,16 @@ package gorm
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
 	"gorm.io/gorm/schema"
+)
+
+const (
+	gormSpannerSequenceTag = "gorm_sequence_name"
 )
 
 type SpannerMigrator interface {
@@ -45,25 +48,15 @@ func (m spannerMigrator) AutoMigrate(values ...interface{}) error {
 			return err
 		}
 	}
-	inputs := make([]reflect.Value, len(values))
-	for i, _ := range values {
-		inputs[i] = reflect.ValueOf(values[i])
-	}
-	result := reflect.ValueOf(&m.Migrator).MethodByName("AutoMigrate").Call(inputs)
-	if len(result) != 1 {
-		return fmt.Errorf("unexpected return value length: %d", len(result))
-	}
-	if err, ok := result[0].Interface().(error); ok {
-		return err
-	}
-	if result[0].IsNil() {
+	err := m.Migrator.AutoMigrate(values...)
+	if err == nil {
 		if m.Dialector.Config.DisableAutoMigrateBatching {
 			return nil
 		} else {
 			return m.RunBatch()
 		}
 	}
-	return fmt.Errorf("unexpected return value type: %v", result[0])
+	return fmt.Errorf("unexpected return value type: %v", err)
 }
 
 func (m spannerMigrator) StartBatchDDL() error {
@@ -98,7 +91,6 @@ func (m spannerMigrator) FullDataTypeOf(field *schema.Field) (expr clause.Expr) 
 
 	return
 }
-
 func (m spannerMigrator) CreateTable(values ...interface{}) error {
 	for _, value := range m.ReorderModels(values, false) {
 		tx := m.DB.Session(&gorm.Session{})
@@ -108,7 +100,21 @@ func (m spannerMigrator) CreateTable(values ...interface{}) error {
 				values                  = []interface{}{m.CurrentTable(stmt)}
 				hasPrimaryKeyInDataType bool
 			)
-
+			for _, f := range stmt.Schema.Fields {
+				// Cloud spanner does not support auto incrementing primary keys.
+				if f.AutoIncrement && f.HasDefaultValue && f.DefaultValue == "" && f.DefaultValueInterface == nil {
+					sequence := f.Tag.Get(gormSpannerSequenceTag)
+					if sequence == "" {
+						sequence = stmt.Table + "_seq"
+					}
+					if err := tx.Exec("CREATE SEQUENCE IF NOT EXISTS " +
+						sequence +
+						` OPTIONS (sequence_kind = "bit_reversed_positive")`).Error; err != nil {
+						return err
+					}
+					f.DefaultValue = "GET_NEXT_SEQUENCE_VALUE(Sequence " + sequence + ")"
+				}
+			}
 			for _, dbName := range stmt.Schema.DBNames {
 				field := stmt.Schema.FieldsByDBName[dbName]
 				if !field.IgnoreMigration {

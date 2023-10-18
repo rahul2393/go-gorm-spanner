@@ -276,7 +276,7 @@ func TestDefaultValue(t *testing.T) {
 	var result Harumph
 	if err := db.First(&result, "email = ?", "hello@gorm.io").Error; err != nil {
 		t.Fatalf("Failed to find created data, got error: %v", err)
-	} else if result.Name != "foo" || result.Name2 != "foo" || result.Name3 != "" || result.Age != 18 || !result.Enabled || result.Created.Format("20060102") != "20000101" {
+	} else if result.Name != "foo" || result.Name2 != "foo" || result.Name3 != "" || result.Age != 18 || !result.Enabled || result.Created.Format("20060102") != "20000102" {
 		t.Fatalf("Failed to find created data with default data, got %+v", result)
 	}
 	require.Conditionf(t, func() (success bool) {

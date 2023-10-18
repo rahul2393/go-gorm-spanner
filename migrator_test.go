@@ -76,12 +76,12 @@ func TestMigrate(t *testing.T) {
 		t.Fatalf("statement count mismatch\n Got: %v\nWant: %v", g, w)
 	}
 	if g, w := request.GetStatements()[0],
-		`CREATE SEQUENCE IF NOT EXISTS singers_GORM_SEQUENCE OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
+		`CREATE SEQUENCE IF NOT EXISTS singers_seq OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
 		t.Fatalf("create singers sequence statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
 	if g, w := request.GetStatements()[1],
 		"CREATE TABLE `singers` ("+
-			"`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence singers_GORM_SEQUENCE)),`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
+			"`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence singers_seq)),`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
 			"`first_name` STRING(MAX),`last_name` STRING(MAX),`full_name` STRING(MAX),`active` BOOL) "+
 			"PRIMARY KEY (`id`)"; g != w {
 		t.Fatalf("create singers statement text mismatch\n Got: %s\nWant: %s", g, w)
@@ -91,11 +91,11 @@ func TestMigrate(t *testing.T) {
 		t.Fatalf("create idx_singers_deleted_at statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
 	if g, w := request.GetStatements()[3],
-		`CREATE SEQUENCE IF NOT EXISTS albums_GORM_SEQUENCE OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
+		`CREATE SEQUENCE IF NOT EXISTS albums_seq OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
 		t.Fatalf("create albums sequence statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
 	if g, w := request.GetStatements()[4],
-		"CREATE TABLE `albums` (`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence albums_GORM_SEQUENCE)),`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
+		"CREATE TABLE `albums` (`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence albums_seq)),`created_at` TIMESTAMP,`updated_at` TIMESTAMP,`deleted_at` TIMESTAMP,"+
 			"`title` STRING(MAX),`singer_id` INT64,"+
 			"CONSTRAINT `fk_albums_singer` FOREIGN KEY (`singer_id`) REFERENCES `singers`(`id`)) "+
 			"PRIMARY KEY (`id`)"; g != w {

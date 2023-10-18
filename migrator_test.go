@@ -19,14 +19,15 @@ import (
 	"fmt"
 	"testing"
 
-	"cloud.google.com/go/longrunning/autogen/longrunningpb"
-	"cloud.google.com/go/spanner"
-	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	"github.com/golang/protobuf/proto"
 	emptypb "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/types/known/anypb"
 	"gorm.io/gorm"
+
+	"cloud.google.com/go/longrunning/autogen/longrunningpb"
+	"cloud.google.com/go/spanner"
+	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 
 	"github.com/googleapis/go-sql-spanner/testutil"
 )
@@ -42,6 +43,13 @@ type singer struct {
 type album struct {
 	gorm.Model
 	Title    string
+	SingerID uint
+	Singer   *singer
+}
+
+type test struct {
+	ID       uint `gorm:"primarykey" gorm_sequence_name:"overrided_sequence_name"`
+	Test     string
 	SingerID uint
 	Singer   *singer
 }
@@ -63,7 +71,7 @@ func TestMigrate(t *testing.T) {
 		},
 	})
 
-	err = db.Migrator().AutoMigrate(&singer{}, &album{})
+	err = db.Migrator().AutoMigrate(&singer{}, &album{}, &test{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +80,7 @@ func TestMigrate(t *testing.T) {
 		t.Fatalf("request count mismatch\n Got: %v\nWant: %v", g, w)
 	}
 	request := requests[0].(*databasepb.UpdateDatabaseDdlRequest)
-	if g, w := len(request.GetStatements()), 6; g != w {
+	if g, w := len(request.GetStatements()), 8; g != w {
 		t.Fatalf("statement count mismatch\n Got: %v\nWant: %v", g, w)
 	}
 	if g, w := request.GetStatements()[0],
@@ -104,6 +112,17 @@ func TestMigrate(t *testing.T) {
 	if g, w := request.GetStatements()[5],
 		"CREATE INDEX `idx_albums_deleted_at` ON `albums`(`deleted_at`)"; g != w {
 		t.Fatalf("create idx_albums_deleted_at statement text mismatch\n Got: %s\nWant: %s", g, w)
+	}
+	if g, w := request.GetStatements()[6],
+		`CREATE SEQUENCE IF NOT EXISTS overrided_sequence_name OPTIONS (sequence_kind = "bit_reversed_positive")`; g != w {
+		t.Fatalf("create albums sequence statement text mismatch\n Got: %s\nWant: %s", g, w)
+	}
+	if g, w := request.GetStatements()[7],
+		"CREATE TABLE `tests` (`id` INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(Sequence overrided_sequence_name)),"+
+			"`test` STRING(MAX),`singer_id` INT64,"+
+			"CONSTRAINT `fk_tests_singer` FOREIGN KEY (`singer_id`) REFERENCES `singers`(`id`)) "+
+			"PRIMARY KEY (`id`)"; g != w {
+		t.Fatalf("create albums statement text mismatch\n Got: %s\nWant: %s", g, w)
 	}
 }
 

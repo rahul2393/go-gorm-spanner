@@ -25,6 +25,10 @@ import (
 	"gorm.io/gorm/schema"
 )
 
+const (
+	gormSpannerSequenceTag = "gorm_sequence_name"
+)
+
 type SpannerMigrator interface {
 	gorm.Migrator
 
@@ -99,12 +103,16 @@ func (m spannerMigrator) CreateTable(values ...interface{}) error {
 			for _, f := range stmt.Schema.Fields {
 				// Cloud spanner does not support auto incrementing primary keys.
 				if f.AutoIncrement && f.HasDefaultValue && f.DefaultValue == "" && f.DefaultValueInterface == nil {
+					sequence := f.Tag.Get(gormSpannerSequenceTag)
+					if sequence == "" {
+						sequence = stmt.Table + "_seq"
+					}
 					if err := tx.Exec("CREATE SEQUENCE IF NOT EXISTS " +
-						stmt.Table + "_seq" +
+						sequence +
 						` OPTIONS (sequence_kind = "bit_reversed_positive")`).Error; err != nil {
 						return err
 					}
-					f.DefaultValue = "GET_NEXT_SEQUENCE_VALUE(Sequence " + stmt.Table + "_seq)"
+					f.DefaultValue = "GET_NEXT_SEQUENCE_VALUE(Sequence " + sequence + ")"
 				}
 			}
 			for _, dbName := range stmt.Schema.DBNames {

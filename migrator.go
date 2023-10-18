@@ -100,12 +100,11 @@ func (m spannerMigrator) CreateTable(values ...interface{}) error {
 				// Cloud spanner does not support auto incrementing primary keys.
 				if f.AutoIncrement && f.HasDefaultValue && f.DefaultValue == "" && f.DefaultValueInterface == nil {
 					if err := tx.Exec("CREATE SEQUENCE IF NOT EXISTS " +
-						stmt.Table + "_GORM_SEQUENCE" +
+						stmt.Table + "_seq" +
 						` OPTIONS (sequence_kind = "bit_reversed_positive")`).Error; err != nil {
 						return err
 					}
-					f.HasDefaultValue = true
-					f.DefaultValue = "GET_NEXT_SEQUENCE_VALUE(Sequence " + stmt.Table + "_GORM_SEQUENCE)"
+					f.DefaultValue = "GET_NEXT_SEQUENCE_VALUE(Sequence " + stmt.Table + "_seq)"
 				}
 			}
 			for _, dbName := range stmt.Schema.DBNames {

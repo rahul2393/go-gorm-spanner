@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
 	"testing"
 	"time"
@@ -282,4 +283,90 @@ func TestDefaultValue(t *testing.T) {
 	require.Conditionf(t, func() (success bool) {
 		return result.ID > 0
 	}, "ID should be greater than 0")
+}
+
+func TestDistinct(t *testing.T) {
+	skipIfShort(t)
+	t.Parallel()
+	dsn, cleanup, err := createTestDB(context.Background())
+	if err != nil {
+		log.Fatalf("could not init integration tests while creating database: %v", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+	// Open db.
+	db, err := gorm.Open(New(Config{
+		DriverName: "spanner",
+		DSN:        dsn,
+	}), &gorm.Config{PrepareStmt: true})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := db.AutoMigrate(&testutil.User{}, &testutil.Account{}, &testutil.Pet{}, &testutil.Company{}, &testutil.Toy{}, &testutil.Language{},
+		&testutil.Coupon{}, &testutil.CouponProduct{}, &testutil.Order{}, &testutil.Parent{}, &testutil.Child{}); err != nil {
+		t.Fatalf("Failed to migrate with default value, got error: %v", err)
+	}
+
+	users := []testutil.User{
+		*testutil.GetUser("distinct", testutil.Config{}),
+		*testutil.GetUser("distinct", testutil.Config{}),
+		*testutil.GetUser("distinct", testutil.Config{}),
+		*testutil.GetUser("distinct-2", testutil.Config{}),
+		*testutil.GetUser("distinct-3", testutil.Config{}),
+	}
+	users[0].Age = 20
+
+	if err := db.Create(&users).Error; err != nil {
+		t.Fatalf("errors happened when create users: %v", err)
+	}
+
+	var names []string
+	db.Table("users").Where("name like ?", "distinct%").Order("name").Pluck("name", &names)
+	testutil.AssertEqual(t, names, []string{"distinct", "distinct", "distinct", "distinct-2", "distinct-3"})
+
+	var names1 []string
+	db.Model(&testutil.User{}).Where("name like ?", "distinct%").Distinct().Order("name").Pluck("Name", &names1)
+
+	testutil.AssertEqual(t, names1, []string{"distinct", "distinct-2", "distinct-3"})
+
+	var names2 []string
+	db.Scopes(func(db *gorm.DB) *gorm.DB {
+		return db.Table("users")
+	}).Where("name like ?", "distinct%").Order("name").Pluck("name", &names2)
+	testutil.AssertEqual(t, names2, []string{"distinct", "distinct", "distinct", "distinct-2", "distinct-3"})
+
+	var results []testutil.User
+	if err := db.Distinct("name", "age").Where("name like ?", "distinct%").Order("name, age desc").Find(&results).Error; err != nil {
+		t.Errorf("failed to query users, got error: %v", err)
+	}
+
+	expects := []testutil.User{
+		{Name: "distinct", Age: 20},
+		{Name: "distinct", Age: 18},
+		{Name: "distinct-2", Age: 18},
+		{Name: "distinct-3", Age: 18},
+	}
+
+	if len(results) != 4 {
+		t.Fatalf("invalid results length found, expects: %v, got %v", len(expects), len(results))
+	}
+
+	for idx, expect := range expects {
+		testutil.AssertObjEqual(t, results[idx], expect, "Name", "Age")
+	}
+
+	var count int64
+	if err := db.Model(&testutil.User{}).Where("name like ?", "distinct%").Count(&count).Error; err != nil || count != 5 {
+		t.Errorf("failed to query users count, got error: %v, count: %v", err, count)
+	}
+
+	if err := db.Model(&testutil.User{}).Distinct("name").Where("name like ?", "distinct%").Count(&count).Error; err != nil || count != 3 {
+		t.Errorf("failed to query users count, got error: %v, count %v", err, count)
+	}
+
+	dryDB := db.Session(&gorm.Session{DryRun: true})
+	r := dryDB.Distinct("u.id, u.*").Table("user_speaks as s").Joins("inner join users as u on u.id = s.user_id").Where("s.language_code ='US' or s.language_code ='ES'").Find(&testutil.User{})
+	if !regexp.MustCompile(`SELECT DISTINCT u\.id, u\.\* FROM user_speaks as s inner join users as u`).MatchString(r.Statement.SQL.String()) {
+		t.Fatalf("Build Distinct with u.*, but got %v", r.Statement.SQL.String())
+	}
 }

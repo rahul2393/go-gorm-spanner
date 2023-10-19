@@ -306,7 +306,7 @@ func TestDistinct(t *testing.T) {
 	}
 	if err := db.AutoMigrate(&testutil.User{}, &testutil.Account{}, &testutil.Pet{}, &testutil.Company{}, &testutil.Toy{}, &testutil.Language{},
 		&testutil.Coupon{}, &testutil.CouponProduct{}, &testutil.Order{}, &testutil.Parent{}, &testutil.Child{}); err != nil {
-		t.Fatalf("Failed to migrate with default value, got error: %v", err)
+		t.Fatalf("Failed to migrate models, got error: %v", err)
 	}
 
 	users := []testutil.User{

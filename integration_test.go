@@ -35,6 +35,8 @@ import (
 	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	"cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
+
+	"github.com/googleapis/go-gorm/testutil"
 )
 
 var projectId, instanceId string

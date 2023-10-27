@@ -1,6 +1,6 @@
 # go-gorm
 
-[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/googleapis/go-gorm)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/googleapis/go-gorm-spanner)
 
 [Google Cloud Spanner](https://cloud.google.com/spanner) ORM for
 Go's [GORM](https://gorm.io/) implementation.
@@ -9,7 +9,7 @@ Go's [GORM](https://gorm.io/) implementation.
 import (
 	_ "github.com/googleapis/go-sql-spanner"
 
-	spannergorm "github.com/googleapis/go-gorm"
+	spannergorm "github.com/googleapis/go-gorm-spanner"
 )
 
 db, err := gorm.Open(spannergorm.New(spannergorm.Config{

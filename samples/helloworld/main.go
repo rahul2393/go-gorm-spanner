@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 
-	spannergorm "github.com/googleapis/go-gorm"
-	"github.com/googleapis/go-gorm/samples"
+	spannergorm "github.com/googleapis/go-gorm-spanner"
+	"github.com/googleapis/go-gorm-spanner/samples"
 	_ "github.com/googleapis/go-sql-spanner"
 	"gorm.io/gorm"
 )

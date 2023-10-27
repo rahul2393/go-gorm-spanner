@@ -1,6 +1,6 @@
 # Contributing
 
-1. [File an issue](https://github.com/googleapis/go-gorm/issues/new/choose).
+1. [File an issue](https://github.com/googleapis/go-gorm-spanner/issues/new/choose).
    The issue will be used to discuss the bug or feature and should be created
    before sending a PR.
 
@@ -15,7 +15,7 @@
    [contributor license agreements](#contributor-license-agreements) below.
 
 1. Clone the repo:
-   `git clone https://github.com/googleapis/go-gorm`
+   `git clone https://github.com/googleapis/go-gorm-spanner`
 
 1. Change into the checked out source:
    `cd go-gorm`

@@ -33,7 +33,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	spannergorm "github.com/googleapis/go-gorm"
+	spannergorm "github.com/googleapis/go-gorm-spanner"
 	databasepb "google.golang.org/genproto/googleapis/spanner/admin/database/v1"
 )
 

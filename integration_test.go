@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"testing"
@@ -36,7 +37,7 @@ import (
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	"cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
 
-	"github.com/googleapis/go-gorm/testutil"
+	"github.com/googleapis/go-gorm-spanner/testutil"
 )
 
 var projectId, instanceId string
@@ -219,7 +220,6 @@ func TestMain(m *testing.M) {
 	cleanup, err := initIntegrationTests()
 	if err != nil {
 		log.Fatalf("could not init integration tests: %v", err)
-		os.Exit(1)
 	}
 	res := m.Run()
 	cleanup()
@@ -241,7 +241,6 @@ func TestDefaultValue(t *testing.T) {
 	dsn, cleanup, err := createTestDB(context.Background())
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
-		os.Exit(1)
 	}
 	defer cleanup()
 	// Open db.
@@ -293,7 +292,6 @@ func TestDistinct(t *testing.T) {
 	dsn, cleanup, err := createTestDB(context.Background())
 	if err != nil {
 		log.Fatalf("could not init integration tests while creating database: %v", err)
-		os.Exit(1)
 	}
 	defer cleanup()
 	// Open db.
@@ -324,18 +322,18 @@ func TestDistinct(t *testing.T) {
 
 	var names []string
 	db.Table("users").Where("name like ?", "distinct%").Order("name").Pluck("name", &names)
-	testutil.AssertEqual(t, names, []string{"distinct", "distinct", "distinct", "distinct-2", "distinct-3"})
+	require.True(t, reflect.DeepEqual(names, []string{"distinct", "distinct", "distinct", "distinct-2", "distinct-3"}))
 
 	var names1 []string
 	db.Model(&testutil.User{}).Where("name like ?", "distinct%").Distinct().Order("name").Pluck("Name", &names1)
 
-	testutil.AssertEqual(t, names1, []string{"distinct", "distinct-2", "distinct-3"})
+	require.True(t, reflect.DeepEqual(names1, []string{"distinct", "distinct-2", "distinct-3"}))
 
 	var names2 []string
 	db.Scopes(func(db *gorm.DB) *gorm.DB {
 		return db.Table("users")
 	}).Where("name like ?", "distinct%").Order("name").Pluck("name", &names2)
-	testutil.AssertEqual(t, names2, []string{"distinct", "distinct", "distinct", "distinct-2", "distinct-3"})
+	require.True(t, reflect.DeepEqual(names2, []string{"distinct", "distinct", "distinct", "distinct-2", "distinct-3"}))
 
 	var results []testutil.User
 	if err := db.Distinct("name", "age").Where("name like ?", "distinct%").Order("name, age desc").Find(&results).Error; err != nil {
@@ -349,13 +347,10 @@ func TestDistinct(t *testing.T) {
 		{Name: "distinct-3", Age: 18},
 	}
 
-	if len(results) != 4 {
+	if len(results) != len(expects) {
 		t.Fatalf("invalid results length found, expects: %v, got %v", len(expects), len(results))
 	}
-
-	for idx, expect := range expects {
-		testutil.AssertObjEqual(t, results[idx], expect, "Name", "Age")
-	}
+	require.True(t, reflect.DeepEqual(results, expects))
 
 	var count int64
 	if err := db.Model(&testutil.User{}).Where("name like ?", "distinct%").Count(&count).Error; err != nil || count != 5 {
@@ -366,6 +361,7 @@ func TestDistinct(t *testing.T) {
 		t.Errorf("failed to query users count, got error: %v, count %v", err, count)
 	}
 
+	// test for distinct with select
 	dryDB := db.Session(&gorm.Session{DryRun: true})
 	r := dryDB.Distinct("u.id, u.*").Table("user_speaks as s").Joins("inner join users as u on u.id = s.user_id").Where("s.language_code ='US' or s.language_code ='ES'").Find(&testutil.User{})
 	if !regexp.MustCompile(`SELECT DISTINCT u\.id, u\.\* FROM user_speaks as s inner join users as u`).MatchString(r.Statement.SQL.String()) {

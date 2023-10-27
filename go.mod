@@ -1,4 +1,4 @@
-module github.com/googleapis/go-gorm
+module github.com/googleapis/go-gorm-spanner
 
 go 1.20
 

@@ -61,14 +61,14 @@ type Language struct {
 }
 
 type Coupon struct {
-	ID               int              `gorm:"primarykey; size:255"`
+	ID               int              `gorm:"primarykey"`
 	AppliesToProduct []*CouponProduct `gorm:"foreignKey:CouponId;constraint:OnDelete:CASCADE"`
-	AmountOff        uint32           `gorm:"column:amount_off"`
+	AmountOff        int64            `gorm:"column:amount_off"`
 	PercentOff       float32          `gorm:"column:percent_off"`
 }
 
 type CouponProduct struct {
-	CouponId  int    `gorm:"primarykey;size:255"`
+	CouponId  int    `gorm:"primarykey"`
 	ProductId string `gorm:"primarykey;size:255"`
 	Desc      string
 }
@@ -82,7 +82,7 @@ type Order struct {
 
 type Parent struct {
 	gorm.Model
-	FavChildID uint
+	FavChildID int64
 	FavChild   *Child
 	Children   []*Child
 }
@@ -90,6 +90,6 @@ type Parent struct {
 type Child struct {
 	gorm.Model
 	Name     string
-	ParentID *uint
+	ParentID *int64
 	Parent   *Parent
 }

@@ -371,7 +371,7 @@ func UpdateTracksInBatches(w io.Writer, db *gorm.DB) error {
 					if res.Error != nil {
 						return res.Error
 					}
-					return fmt.Errorf("update of Track{%s,%d} affected %d rows", track.ID, track.TrackNumber, res.RowsAffected)
+					return fmt.Errorf("update of Track{%s,%v} affected %v rows", track.ID, track.TrackNumber, res.RowsAffected)
 				}
 				updated++
 				fmt.Fprintf(w, ".")
@@ -381,7 +381,7 @@ func UpdateTracksInBatches(w io.Writer, db *gorm.DB) error {
 	}); err != nil {
 		return fmt.Errorf("failed to batch fetch and update tracks: %w", err)
 	}
-	fmt.Fprintf(w, "\nUpdated %d tracks\n\n", updated)
+	fmt.Fprintf(w, "\nUpdated %v tracks\n\n", updated)
 	return nil
 }
 
@@ -412,17 +412,17 @@ func PrintSingersWithLimitAndOffset(w io.Writer, db *gorm.DB) error {
 	offset := 0
 	for true {
 		if err := db.Order("last_name, id").Limit(limit).Offset(offset).Find(&singers).Error; err != nil {
-			return fmt.Errorf("failed to load singers at offset %d: %w", offset, err)
+			return fmt.Errorf("failed to load singers at offset %v: %w", offset, err)
 		}
 		if len(singers) == 0 {
 			break
 		}
 		for _, singer := range singers {
-			fmt.Fprintf(w, "%d: %v\n", offset, singer.FullName)
+			fmt.Fprintf(w, "%v: %v\n", offset, singer.FullName)
 			offset++
 		}
 	}
-	fmt.Fprintf(w, "Found %d singers\n\n", offset)
+	fmt.Fprintf(w, "Found %v singers\n\n", offset)
 	return nil
 }
 
@@ -547,7 +547,7 @@ func DeleteRandomTrack(w io.Writer, db *gorm.DB) error {
 			if res.Error != nil {
 				return res.Error
 			}
-			return fmt.Errorf("delete affected %d rows", res.RowsAffected)
+			return fmt.Errorf("delete affected %v rows", res.RowsAffected)
 		}
 		return nil
 	}); err != nil {
@@ -574,7 +574,7 @@ func DeleteRandomAlbum(w io.Writer, db *gorm.DB) error {
 			if res.Error != nil {
 				return res.Error
 			}
-			return fmt.Errorf("delete affected %d rows", res.RowsAffected)
+			return fmt.Errorf("delete affected %v rows", res.RowsAffected)
 		}
 		return nil
 	}); err != nil {

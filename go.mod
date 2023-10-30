@@ -1,17 +1,17 @@
 module github.com/googleapis/go-gorm-spanner
 
-go 1.20
+go 1.19
 
 require (
-	cloud.google.com/go/longrunning v0.5.1
-	cloud.google.com/go/spanner v1.51.1-0.20231030141603-7cee47263a12
+	cloud.google.com/go/longrunning v0.5.3
+	cloud.google.com/go/spanner v1.51.1-0.20231030142734-7abc3595e9cc
 	github.com/golang/protobuf v1.5.3
 	github.com/googleapis/go-sql-spanner v1.1.2-0.20231030143945-51f013b57cce
 	github.com/stretchr/testify v1.8.4
-	google.golang.org/api v0.143.0
+	google.golang.org/api v0.148.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
-	gorm.io/gorm v1.25.0
+	gorm.io/gorm v1.25.5
 )
 
 require (
@@ -36,14 +36,14 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/oauth2 v0.12.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/oauth2 v0.13.0 // indirect
+	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230920204549-e6e6cdab5c13 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20230913181813-007df8e322eb // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
+	google.golang.org/genproto v0.0.0-20231002182017-d307bd883b97 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231012201019-e917dd12ba7a // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

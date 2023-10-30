@@ -20,7 +20,7 @@ import (
 
 type sampleFunc func(w io.Writer, db *gorm.DB) error
 
-func TestSample(t *testing.T) {
+func TestIntegration_Sample(t *testing.T) {
 	cleanup, err := testutil.InitIntegrationTests()
 	require.NoError(t, err)
 	defer cleanup()

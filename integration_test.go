@@ -48,7 +48,7 @@ func skipIfShort(t *testing.T) {
 	}
 }
 
-func TestDefaultValue(t *testing.T) {
+func TestIntegration_DefaultValue(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()
 	dsn, cleanup, err := testutil.CreateTestDB(context.Background())
@@ -99,7 +99,7 @@ func TestDefaultValue(t *testing.T) {
 	}, "ID should be greater than 0")
 }
 
-func TestDistinct(t *testing.T) {
+func TestIntegration_Distinct(t *testing.T) {
 	skipIfShort(t)
 	t.Parallel()
 	dsn, cleanup, err := testutil.CreateTestDB(context.Background())

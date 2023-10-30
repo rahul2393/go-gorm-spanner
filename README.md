@@ -50,10 +50,101 @@ $ export SPANNER_EMULATOR_HOST=localhost:9010
 Our libraries are compatible with at least the three most recent, major Go
 releases. They are currently compatible with:
 
+- Go 1.21
 - Go 1.20
 - Go 1.19
-- Go 1.18
-- Go 1.17
+
+## Data Types
+Cloud Spanner supports the following data types in combination with `gorm`.
+
+| Cloud Spanner Type       | gorm / go type             |
+|--------------------------|----------------------------|
+| bool                     | bool, sql.NullBool         |
+| int64                    | uint, int64, sql.NullInt64 |
+| string                   | string, sql.NullString     |
+| json                     | string, sql.NullString     |
+| float64                  | float64, sql.NullFloat64   |
+| numeric                  | decimal.NullDecimal        |
+| timestamp with time zone | time.Time, sql.NullTime    |
+| date                     | datatypes.Date             |
+| bytes                    | []byte                     |
+
+
+## Limitations
+The following limitations are currently known:
+
+| Limitation             | Workaround                                                                                                                                                                                                                                                         |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| OnConflict             | OnConflict clauses are not supported                                                                                                                                                                                                                               |
+| Nested transactions    | Nested transactions and savepoints are not supported. It is therefore recommended to set the configuration option `DisableNestedTransaction: true,`                                                                                                                |
+| Locking                | Lock clauses (e.g. `clause.Locking{Strength: "UPDATE"}`) are not supported. These are generally speaking also not required, as the default isolation level that is used by Cloud Spanner is serializable.                                                          |
+| Auto-save associations | Auto saved associations are not supported, as these will automatically use an OnConflict clause                                                                                                                                                                    |
+
+For complete list of the limitations, see the [Cloud Spanner GORM limitations](https://github.com/googleapis/go-gorm-spanner/blob/main/docs/limitations.md).
+
+### OnConflict Clauses
+`OnConflict` clauses are not supported by Cloud Spanner and should not be used. The following will
+therefore not work.
+
+```go
+user := User{
+    ID:   1,
+    Name: "User Name",
+}
+// OnConflict is not supported and this will return an error.
+db.Clauses(clause.OnConflict{DoNothing: true}).Create(&user)
+```
+
+### Auto-save Associations
+Auto-saving associations will automatically use an `OnConflict` clause in gorm. These are not
+supported. Instead, the parent entity of the association must be created before the child entity is
+created.
+
+```go
+blog := Blog{
+    ID:     1,
+    Name:   "",
+    UserID: 1,
+    User: User{
+        ID:   1,
+        Name: "User Name",
+    },
+}
+// This will fail, as the insert statement for User will use an OnConflict clause.
+db.Create(&blog).Error
+```
+
+Instead, do the following:
+
+```go
+user := User{
+    ID:   1,
+    Name: "User Name",
+    Age:  20,
+}
+blog := Blog{
+    ID:     1,
+    Name:   "",
+    UserID: 1,
+}
+db.Create(&user)
+db.Create(&blog)
+```
+
+### Nested Transactions
+`gorm` uses savepoints for nested transactions. Savepoints are currently not supported by Cloud Spanner. Nested
+transactions can therefore not be used with PGAdapter. It is recommended to set the configuration option
+`DisableNestedTransactions: true` to be sure that `gorm` does not try to use a nested transaction.
+
+```go
+db, err := gorm.Open(postgres.Open(connectionString), &gorm.Config{
+    DisableNestedTransaction: true,
+})
+```
+
+### Locking
+Locking clauses, like `clause.Locking{Strength: "UPDATE"}`, are not supported. These are generally speaking also not
+required, as Cloud Spanner uses isolation level `serializable` for read/write transactions.
 
 ## Authorization
 

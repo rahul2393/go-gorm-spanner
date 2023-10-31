@@ -11,7 +11,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
-	
+	"gorm.io/gorm/logger"
+
 	spannergorm "github.com/googleapis/go-gorm-spanner"
 	"github.com/googleapis/go-gorm-spanner/samples/interleave"
 	"github.com/googleapis/go-gorm-spanner/testutil"
@@ -32,7 +33,7 @@ func TestIntegration_Sample(t *testing.T) {
 	db, err := gorm.Open(spannergorm.New(spannergorm.Config{
 		DriverName: "spanner",
 		DSN:        dsn,
-	}), &gorm.Config{PrepareStmt: true, IgnoreRelationshipsWhenMigrating: true})
+	}), &gorm.Config{PrepareStmt: true, IgnoreRelationshipsWhenMigrating: true, Logger: logger.Default.LogMode(logger.Error)})
 	require.NoError(t, err)
 	require.NoError(t, samples.CreateInterleavedTablesIfNotExist(os.Stdout, db))
 	require.NoError(t, db.AutoMigrate(&samples.Venue{}, &samples.Concert{}))

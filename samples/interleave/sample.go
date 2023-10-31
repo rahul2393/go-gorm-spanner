@@ -281,7 +281,7 @@ func PrintConcerts(w io.Writer, db *gorm.DB) error {
 		return fmt.Errorf("failed to load concerts: %w", err)
 	}
 	for _, concert := range concerts {
-		fmt.Fprintf(w, "Concert %q starting at %v will be performed by %s at %s\n",
+		fmt.Fprintf(w, "Concert %q starting at %v will be performed by %v at %v\n",
 			concert.Name, concert.StartTime, concert.Singer.FullName, concert.Venue.Name)
 	}
 	fmt.Fprintf(w, "Fetched all concerts\n\n")
@@ -371,7 +371,7 @@ func UpdateTracksInBatches(w io.Writer, db *gorm.DB) error {
 					if res.Error != nil {
 						return res.Error
 					}
-					return fmt.Errorf("update of Track{%s,%v} affected %v rows", track.ID, track.TrackNumber, res.RowsAffected)
+					return fmt.Errorf("update of Track{%v,%v} affected %v rows", track.ID, track.TrackNumber, res.RowsAffected)
 				}
 				updated++
 				fmt.Fprintf(w, ".")

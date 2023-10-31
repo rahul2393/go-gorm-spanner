@@ -195,8 +195,8 @@ func CreateRandomSingersAndAlbums(w io.Writer, db *gorm.DB) error {
 				return fmt.Errorf("failed to create singer: %w", err)
 			}
 			fmt.Fprintf(w, ".")
-			// Create between 2 and 12 random albums
-			for j := 0; j < randInt(2, 12); j++ {
+			// Create between 2 and 100 random albums
+			for j := 0; j < randInt(2, 100); j++ {
 				_, err = CreateAlbumWithRandomTracks(db, randAlbumTitle(), singerId, randInt(1, 22))
 				if err != nil {
 					return fmt.Errorf("failed to create album: %w", err)
@@ -281,7 +281,7 @@ func PrintConcerts(w io.Writer, db *gorm.DB) error {
 		return fmt.Errorf("failed to load concerts: %w", err)
 	}
 	for _, concert := range concerts {
-		fmt.Fprintf(w, "Concert %q starting at %v will be performed by %s at %s\n",
+		fmt.Fprintf(w, "Concert %q starting at %v will be performed by %v at %v\n",
 			concert.Name, concert.StartTime, concert.Singer.FullName, concert.Venue.Name)
 	}
 	fmt.Fprintf(w, "Fetched all concerts\n\n")
@@ -371,7 +371,7 @@ func UpdateTracksInBatches(w io.Writer, db *gorm.DB) error {
 					if res.Error != nil {
 						return res.Error
 					}
-					return fmt.Errorf("update of Track{%s,%d} affected %d rows", track.ID, track.TrackNumber, res.RowsAffected)
+					return fmt.Errorf("update of Track{%v,%v} affected %v rows", track.ID, track.TrackNumber, res.RowsAffected)
 				}
 				updated++
 				fmt.Fprintf(w, ".")
@@ -381,7 +381,7 @@ func UpdateTracksInBatches(w io.Writer, db *gorm.DB) error {
 	}); err != nil {
 		return fmt.Errorf("failed to batch fetch and update tracks: %w", err)
 	}
-	fmt.Fprintf(w, "\nUpdated %d tracks\n\n", updated)
+	fmt.Fprintf(w, "\nUpdated %v tracks\n\n", updated)
 	return nil
 }
 
@@ -390,7 +390,7 @@ func PrintAlbumsReleaseBefore1900(w io.Writer, db *gorm.DB) error {
 	var albums []*Album
 	if err := db.Where(
 		"release_date < ?",
-		civil.DateOf(time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)),
+		spanner.NullDate{Valid: true, Date: civil.DateOf(time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC))},
 	).Order("release_date asc").Find(&albums).Error; err != nil {
 		return fmt.Errorf("failed to load albums: %w", err)
 	}
@@ -412,17 +412,17 @@ func PrintSingersWithLimitAndOffset(w io.Writer, db *gorm.DB) error {
 	offset := 0
 	for true {
 		if err := db.Order("last_name, id").Limit(limit).Offset(offset).Find(&singers).Error; err != nil {
-			return fmt.Errorf("failed to load singers at offset %d: %w", offset, err)
+			return fmt.Errorf("failed to load singers at offset %v: %w", offset, err)
 		}
 		if len(singers) == 0 {
 			break
 		}
 		for _, singer := range singers {
-			fmt.Fprintf(w, "%d: %v\n", offset, singer.FullName)
+			fmt.Fprintf(w, "%v: %v\n", offset, singer.FullName)
 			offset++
 		}
 	}
-	fmt.Fprintf(w, "Found %d singers\n\n", offset)
+	fmt.Fprintf(w, "Found %v singers\n\n", offset)
 	return nil
 }
 
@@ -547,7 +547,7 @@ func DeleteRandomTrack(w io.Writer, db *gorm.DB) error {
 			if res.Error != nil {
 				return res.Error
 			}
-			return fmt.Errorf("delete affected %d rows", res.RowsAffected)
+			return fmt.Errorf("delete affected %v rows", res.RowsAffected)
 		}
 		return nil
 	}); err != nil {
@@ -574,7 +574,7 @@ func DeleteRandomAlbum(w io.Writer, db *gorm.DB) error {
 			if res.Error != nil {
 				return res.Error
 			}
-			return fmt.Errorf("delete affected %d rows", res.RowsAffected)
+			return fmt.Errorf("delete affected %v rows", res.RowsAffected)
 		}
 		return nil
 	}); err != nil {
@@ -632,7 +632,10 @@ func randInt(min, max int) int {
 }
 
 func randDate() spanner.NullDate {
-	return spanner.NullDate{Date: civil.DateOf(time.Date(randInt(1850, 2010), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
+	if rand.Int()%2 == 0 {
+		return spanner.NullDate{Valid: true, Date: civil.DateOf(time.Date(randInt(1850, 1899), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
+	}
+	return spanner.NullDate{Valid: true, Date: civil.DateOf(time.Date(randInt(1850, 2010), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
 }
 
 func randBytes(length int) []byte {

@@ -1,4 +1,4 @@
-# go-gorm
+# go-gorm-spanner
 
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/googleapis/go-gorm-spanner)
 
@@ -7,6 +7,7 @@ Go's [GORM](https://gorm.io/) implementation.
 
 ``` go
 import (
+    "gorm.io/gorm"
 	_ "github.com/googleapis/go-sql-spanner"
 
 	spannergorm "github.com/googleapis/go-gorm-spanner"
@@ -20,18 +21,18 @@ if err != nil {
     log.Fatal(err)
 }
 
-// Print tweets with more than 500 likes.
-type Tweet struct {
-    ID           int `gorm:"primarykey;autoIncrement:false"`
+// Print singers with more than 500 likes.
+type Singer struct {
+    gorm.Model
     Text         string
     Likes        int
 }
-var tweets []Tweet
-if err := db.Where("likes > ?", 500).Find(&tweets).Error; err != nil {
+var singers []Singer
+if err := db.Where("likes > ?", 500).Find(&singers).Error; err != nil {
     log.Fatal(err)
 }
-for t := range tweets {
-    fmt.Println(t.ID, t.Text)
+for s := range singers {
+    fmt.Println(s.ID, s.Text)
 }
 ```
 
@@ -73,12 +74,14 @@ Cloud Spanner supports the following data types in combination with `gorm`.
 ## Limitations
 The following limitations are currently known:
 
-| Limitation             | Workaround                                                                                                                                                                                                                                                         |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| OnConflict             | OnConflict clauses are not supported                                                                                                                                                                                                                               |
-| Nested transactions    | Nested transactions and savepoints are not supported. It is therefore recommended to set the configuration option `DisableNestedTransaction: true,`                                                                                                                |
-| Locking                | Lock clauses (e.g. `clause.Locking{Strength: "UPDATE"}`) are not supported. These are generally speaking also not required, as the default isolation level that is used by Cloud Spanner is serializable.                                                          |
-| Auto-save associations | Auto saved associations are not supported, as these will automatically use an OnConflict clause                                                                                                                                                                    |
+| Limitation                                                                                     | Workaround                                                                                                                                                                                                |
+|------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| OnConflict                                                                                     | OnConflict clauses are not supported                                                                                                                                                                      |
+| Nested transactions                                                                            | Nested transactions and savepoints are not supported. It is therefore recommended to set the configuration option `DisableNestedTransaction: true,`                                                       |
+| Locking                                                                                        | Lock clauses (e.g. `clause.Locking{Strength: "UPDATE"}`) are not supported. These are generally speaking also not required, as the default isolation level that is used by Cloud Spanner is serializable. |
+| Auto-save associations                                                                         | Auto saved associations are not supported, as these will automatically use an OnConflict clause                                                                                                           |
+| [gorm.Automigrate](https://gorm.io/docs/migration.html#Auto-Migration) with interleaved tables | Interleaved tables are not supported by gorm. It is therefore recommended to setup interleave tables separately.                                                                                          |
+| [Cloud Spanner stale reads](https://cloud.google.com/spanner/docs/reads#go)                    | Stale reads are not supported by gorm.                                                                                                                                                                    |    
 
 For complete list of the limitations, see the [Cloud Spanner GORM limitations](https://github.com/googleapis/go-gorm-spanner/blob/main/docs/limitations.md).
 

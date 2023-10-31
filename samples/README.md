@@ -1,4 +1,4 @@
-# Spanner Go Sql Examples
+# Spanner GORM Examples
 
 This directory contains samples for how to use GORM with Cloud Spanner. Each sample can be executed
 as a standalone application without the need for any prior setup, other than that Docker must be installed

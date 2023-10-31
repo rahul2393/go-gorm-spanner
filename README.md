@@ -39,10 +39,11 @@ for s := range singers {
 ## Emulator
 
 See the [Google Cloud Spanner Emulator](https://cloud.google.com/spanner/docs/emulator) support to learn how to start the emulator.
-Once the emulator is started and the host environmental flag is set, the driver should just work.
+When the emulator has been started and the environment variable has been set, `gorm` will automatically connect to the emulator
+instead of Cloud Spanner.
 
 ```
-$ gcloud beta emulators spanner start
+$ gcloud emulators spanner start
 $ export SPANNER_EMULATOR_HOST=localhost:9010
 ```
 
@@ -72,7 +73,7 @@ Cloud Spanner supports the following data types in combination with `gorm`.
 
 
 ## Limitations
-The following limitations are currently known:
+The Cloud Spanner `gorm` dialect has the following known limitations:
 
 | Limitation                                                                                     | Workaround                                                                                                                                                                                                |
 |------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -80,10 +81,10 @@ The following limitations are currently known:
 | Nested transactions                                                                            | Nested transactions and savepoints are not supported. It is therefore recommended to set the configuration option `DisableNestedTransaction: true,`                                                       |
 | Locking                                                                                        | Lock clauses (e.g. `clause.Locking{Strength: "UPDATE"}`) are not supported. These are generally speaking also not required, as the default isolation level that is used by Cloud Spanner is serializable. |
 | Auto-save associations                                                                         | Auto saved associations are not supported, as these will automatically use an OnConflict clause                                                                                                           |
-| [gorm.Automigrate](https://gorm.io/docs/migration.html#Auto-Migration) with interleaved tables | Interleaved tables are not supported by gorm. It is therefore recommended to setup interleave tables separately.                                                                                          |
+| [gorm.Automigrate](https://gorm.io/docs/migration.html#Auto-Migration) with interleaved tables | Interleaved tables are supported by the Cloud Spanner `gorm` dialect, but Auto-Migration does not support interleaved tables. It is therefore recommended to create interleaved tables manually.          |
 | [Cloud Spanner stale reads](https://cloud.google.com/spanner/docs/reads#go)                    | Stale reads are not supported by gorm.                                                                                                                                                                    |    
 
-For complete list of the limitations, see the [Cloud Spanner GORM limitations](https://github.com/googleapis/go-gorm-spanner/blob/main/docs/limitations.md).
+For the complete list of the limitations, see the [Cloud Spanner GORM limitations](https://github.com/googleapis/go-gorm-spanner/blob/main/docs/limitations.md).
 
 ### OnConflict Clauses
 `OnConflict` clauses are not supported by Cloud Spanner and should not be used. The following will
@@ -151,10 +152,10 @@ application to run in many environments without requiring explicit configuration
 ## Contributing
 
 Contributions are welcome. Please, see the
-[CONTRIBUTING](https://github.com/googleapis/go-sql-spanner/blob/main/CONTRIBUTING.md)
+[CONTRIBUTING](https://github.com/googleapis/go-gorm-spanner/blob/main/CONTRIBUTING.md)
 document for details.
 
 Please note that this project is released with a Contributor Code of Conduct.
 By participating in this project you agree to abide by its terms.
-See [Contributor Code of Conduct](https://github.com/googleapis/go-sql-spanner/blob/main/CODE_OF_CONDUCT.md)
+See [Contributor Code of Conduct](https://github.com/googleapis/go-gorm-spanner/blob/main/CODE_OF_CONDUCT.md)
 for more information.

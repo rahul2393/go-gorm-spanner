@@ -195,8 +195,8 @@ func CreateRandomSingersAndAlbums(w io.Writer, db *gorm.DB) error {
 				return fmt.Errorf("failed to create singer: %w", err)
 			}
 			fmt.Fprintf(w, ".")
-			// Create between 2 and 12 random albums
-			for j := 0; j < randInt(2, 12); j++ {
+			// Create between 2 and 100 random albums
+			for j := 0; j < randInt(2, 100); j++ {
 				_, err = CreateAlbumWithRandomTracks(db, randAlbumTitle(), singerId, randInt(1, 22))
 				if err != nil {
 					return fmt.Errorf("failed to create album: %w", err)
@@ -632,6 +632,9 @@ func randInt(min, max int) int {
 }
 
 func randDate() spanner.NullDate {
+	if rand.Int()%2 == 0 {
+		return spanner.NullDate{Date: civil.DateOf(time.Date(randInt(1850, 1899), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
+	}
 	return spanner.NullDate{Date: civil.DateOf(time.Date(randInt(1850, 2010), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
 }
 

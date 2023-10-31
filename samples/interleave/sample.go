@@ -390,7 +390,7 @@ func PrintAlbumsReleaseBefore1900(w io.Writer, db *gorm.DB) error {
 	var albums []*Album
 	if err := db.Where(
 		"release_date < ?",
-		civil.DateOf(time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)),
+		spanner.NullDate{Valid: true, Date: civil.DateOf(time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC))},
 	).Order("release_date asc").Find(&albums).Error; err != nil {
 		return fmt.Errorf("failed to load albums: %w", err)
 	}
@@ -633,9 +633,9 @@ func randInt(min, max int) int {
 
 func randDate() spanner.NullDate {
 	if rand.Int()%2 == 0 {
-		return spanner.NullDate{Date: civil.DateOf(time.Date(randInt(1850, 1899), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
+		return spanner.NullDate{Valid: true, Date: civil.DateOf(time.Date(randInt(1850, 1899), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
 	}
-	return spanner.NullDate{Date: civil.DateOf(time.Date(randInt(1850, 2010), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
+	return spanner.NullDate{Valid: true, Date: civil.DateOf(time.Date(randInt(1850, 2010), time.Month(randInt(1, 12)), randInt(1, 28), 0, 0, 0, 0, time.UTC))}
 }
 
 func randBytes(length int) []byte {

@@ -587,6 +587,8 @@ func DeleteRandomAlbum(w io.Writer, db *gorm.DB) error {
 // CreateInterleavedTablesIfNotExist creates all tables that are required for this sample if they do not yet exist.
 func CreateInterleavedTablesIfNotExist(w io.Writer, db *gorm.DB) error {
 	fmt.Fprintf(w, "Creating tables...")
+	// Ignore licence header characters
+	createDataModelSQL = createDataModelSQL[588 : len(createDataModelSQL)-1]
 	ddlStatements := strings.FieldsFunc(string(createDataModelSQL), func(r rune) bool {
 		return r == ';'
 	})

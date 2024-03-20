@@ -12,7 +12,7 @@ require (
 	google.golang.org/genproto v0.0.0-20231016165738-49dd2c1f3d0b
 	google.golang.org/grpc v1.59.0
 	gorm.io/datatypes v1.2.0
-	gorm.io/gorm v1.25.5
+	gorm.io/gorm v1.25.8
 )
 
 require (

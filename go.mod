@@ -11,7 +11,7 @@ require (
 	google.golang.org/api v0.148.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
-	gorm.io/gorm v1.25.5
+	gorm.io/gorm v1.25.8
 )
 
 require (

@@ -5,12 +5,12 @@ go 1.19
 require (
 	cloud.google.com/go/longrunning v0.5.3
 	cloud.google.com/go/spanner v1.51.1-0.20231030142734-7abc3595e9cc
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/googleapis/go-sql-spanner v1.1.2-0.20231030143945-51f013b57cce
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/api v0.148.0
 	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.33.0
 	gorm.io/gorm v1.25.5
 )
 
